@@ -1,8 +1,11 @@
-extern crate std;
 
 use super::Config;
 
-const OUTPUT_BUFFER_SIZE : usize = 128;
+// In theory OUTPUT_BUFFER_SIZE = 1<<window_size+1<<lookahead_sz2
+// default value allocate about 384 bytes
+// It is similar to window=7, lookahead=4
+const OUTPUT_BUFFER_SIZE :  usize = 0x100;
+const OUTPUT_BUFFER_SIZE_MASK :  usize = OUTPUT_BUFFER_SIZE-1;
 
 #[derive(Copy, Clone)]
 enum HSDstate {
@@ -13,9 +16,7 @@ enum HSDstate {
     HSDSBackrefCountMsb, /* most significant byte of count */
     HSDSBackrefCountLsb, /* least significant byte of count */
     HSDSYieldBackref,    /* ready to yield back-reference */
-    HSDSNeedMoreData,    /* End of input buffer detected */
-    OutputFull,          /* Abort due to full output */
-    IllegalBackref,      /* Abort due to illegal backref */
+    HSDSNeedMoreData,    /* End of input buffer detected */    
 }
 
 #[derive(Copy, Clone)]
@@ -34,9 +35,7 @@ pub struct HeatshrinkDecoder<'a> {
     //
     output_buffer : [u8;OUTPUT_BUFFER_SIZE], // must be able to contain a full window
     output_head   : usize,
-    output_tail   : usize, 
-    total_output  : usize,
-    
+    output_tail   : usize,     
 }
 
 
@@ -53,8 +52,7 @@ impl<'a> HeatshrinkDecoder<'a> {
             bitcount        : 0,    
             output_buffer   : [0;OUTPUT_BUFFER_SIZE],
             output_head     : 0,
-            output_tail     : 0,
-            total_output    : 0,
+            output_tail     : 0,            
         }
     }
     pub fn reset(&mut self, input: &'a [u8]) -> bool {
@@ -63,8 +61,7 @@ impl<'a> HeatshrinkDecoder<'a> {
         self.rewind   = 0;
         self.state          = HSDstate::HSDSTagBit;
         self.input_index    = 0;
-        self.input          = input;
-        self.total_output   = 0;
+        self.input          = input;        
         self.output_head    = 0;
         self.output_tail    = 0;
         self.bitbuffer      = 0;
@@ -79,16 +76,9 @@ impl<'a> HeatshrinkDecoder<'a> {
             // do we have data available ?
             if self.output_head<self.output_tail
             {
-                let r=self.output_buffer[self.output_head];
+                let r=self.output_buffer[self.output_head & OUTPUT_BUFFER_SIZE_MASK];
                 self.output_head+=1;                                
                 return r;
-            }
-            // wrap ?
-            if  self.output_head > (self.cfg.window_sz2 as usize)+(OUTPUT_BUFFER_SIZE/2)
-            {
-                let half = OUTPUT_BUFFER_SIZE/2;
-                self.output_head -= half; // no need to copy, buffer is empty
-                self.output_tail -= half;
             }
 
             loop {
@@ -102,21 +92,12 @@ impl<'a> HeatshrinkDecoder<'a> {
                     HSDstate::HSDSYieldBackref => self.st_yield_backref(),
                     HSDstate::HSDSNeedMoreData => {
                         break;
-                    }
-                    HSDstate::OutputFull => {
-                        panic!("Should not happen");                     
-                    }
-                    HSDstate::IllegalBackref => {
-                        panic!("Should not happen");                        
-                    }
+                    }                  
                 };
                 // println!("State: {:?} {:?}", self.state, self.bit_index);
                 if self.input_index > self.input.len()    {
                     panic!("input buffer overflow");                
-                }
-                if self.output_tail > OUTPUT_BUFFER_SIZE {
-                    panic!("output buffer overflow");
-                }
+                }                
                 if self.output_head!=self.output_tail
                 {
                     break;
@@ -169,7 +150,7 @@ impl<'a> HeatshrinkDecoder<'a> {
                 return HSDstate::HSDSNeedMoreData;
             }
         };
-        self.output_buffer[self.output_tail] = byte as u8;
+        self.output_buffer[self.output_tail & OUTPUT_BUFFER_SIZE_MASK] = byte as u8;
         self.output_tail += 1;
         //std::print!("litteral {}\n",1);
         HSDstate::HSDSTagBit
@@ -235,17 +216,13 @@ impl<'a> HeatshrinkDecoder<'a> {
         if self.output_tail <  self.rewind as usize
         {
             panic!("Rewinding too much");
-        }
-        if self.output_tail + count >= OUTPUT_BUFFER_SIZE {
-            panic!("output overflow2");
-        }
+        }        
         let start_in = self.output_tail - self.rewind as usize;       
         for i in 0..count {
-            self.output_buffer[self.output_tail+i] = self.output_buffer[start_in + i];
+            self.output_buffer[(self.output_tail+i)& OUTPUT_BUFFER_SIZE_MASK] = self.output_buffer[(start_in + i)& OUTPUT_BUFFER_SIZE_MASK];
         }
         //std::print!("Copy {}\n",count);
-        self.output_tail +=count;        
-        self.total_output+=count;
+        self.output_tail +=count;                
         HSDstate::HSDSTagBit
     }
 }
