@@ -219,7 +219,8 @@ impl<'a> HeatshrinkDecoder<'a> {
         }        
         let start_in = self.output_tail - self.rewind as usize;       
         for i in 0..count {
-            self.output_buffer[(self.output_tail+i)& OUTPUT_BUFFER_SIZE_MASK] = self.output_buffer[(start_in + i)& OUTPUT_BUFFER_SIZE_MASK];
+            self.output_buffer[(self.output_tail+i+OUTPUT_BUFFER_SIZE)& OUTPUT_BUFFER_SIZE_MASK] 
+                        = self.output_buffer[(start_in + i+OUTPUT_BUFFER_SIZE)& OUTPUT_BUFFER_SIZE_MASK];
         }
         //std::print!("Copy {}\n",count);
         self.output_tail +=count;                

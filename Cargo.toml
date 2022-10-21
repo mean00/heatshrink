@@ -1,5 +1,6 @@
 [package]
-name = "heatshrink"
+
+name = "heatshrink_byte"
 version = "0.1.0"
 edition = "2021"
 authors = ["Frank A. Stevenson <root@localhost>"]
@@ -11,3 +12,21 @@ repository = "https://github.com/snakehand/heatshrink.git"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+
+[lib]
+name = "heatshrink_byte"
+path = "src/lib.rs"
+crate-type = ["rlib"] # Creates static lib
+
+[profile.dev]
+codegen-units = 1
+debug = true
+lto = true
+opt-level       = 's'
+
+[profile.release]
+codegen-units = 1
+debug = false
+lto = true
+opt-level       = 's'
