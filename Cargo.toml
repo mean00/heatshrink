@@ -8,12 +8,19 @@ description = "A minimal implementation of the heatshrink compression algorithm 
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/mean00/heatshrink.git"
-#https://github.com/snakehand/heatshrink.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
+[features]
+default = []
+encode = ["clap"]
 
+[dependencies]
+clap = { version = "3.1.18",features = ["derive"], optional = true}
+
+[[bin]]
+name = "heatshrink_rust"
+required-features = ["encode"]
 
 [lib]
 name = "heatshrink_byte"

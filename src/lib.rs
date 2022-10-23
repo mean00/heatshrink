@@ -8,11 +8,14 @@
 //! described here <https://github.com/atomicobject/heatshrink>
 //! and here <https://spin.atomicobject.com/2013/03/14/heatshrink-embedded-data-compression/>
 
-mod decoder;
-mod encoder;
+pub mod decoder;
+#[cfg(feature = "encode")]
+pub mod encoder;
 
 pub use decoder::HeatshrinkDecoder as HeatshrinkDecoder;
 
+#[cfg(feature = "encode")]
+pub use encoder::{encode, EncodeError};
 /// Structure holding the configuration parameters
 /// These can be tuned to improve compression ratio
 /// But bbust be the same for encode() & decode()
@@ -68,60 +71,3 @@ impl Config {
     }
 }
 
-#[cfg(test)]
-mod test {
-    extern crate std;
-    use super::{decoder, encoder, Config};
-
-    fn compare(a1: &[u8], a2 : &[u8]) {
-        assert_eq!(a1.len(), a2.len());
-        for i in 0..a1.len()
-        {
-            if a1[i]!=a2[i]
-            {
-                std::println!("Mismatch at index {}",i);
-            }
-            assert_eq!(a1[i], a2[i]);
-        }
-    }
-    fn dump(name : &str, a1: &[u8]) {
-        std::println!("{}",name);
-        for i in 0..a1.len()
-        {
-            std::print!("[{}]{:#04x}, ",i,a1[i]);
-        }
-        std::print!("\n");
-    }
-    #[test]
-    fn short_decode() {
-        let src = [
-            // bd a0 33
-            /*0*/189, 160, 51, 163,   0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0,    0,
-            /*17*/0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-            /*28*/199, 0, 0, 0, 0, 0, 0, 0, 
-            /*36*/166, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-            /*52*/154, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0,
-        ];
-        let mut dst1 = [0; 100];
-        let mut dst2 = [0; 100];
-        
-        let cfg = Config::new(11, 4).unwrap();
-        
-        let out1 = encoder::encode(&src, &mut dst1, &cfg).unwrap();
-        std::println!("Input ({}) -> compressed {}",src.len(),out1.len());
-        //
-        let mut decoder = decoder::HeatshrinkDecoder::new(out1,&cfg);
-        std::println!("compressed ->dst2",);
-        for i in 0..src.len()
-        {
-            dst2[i]=decoder.next();
-            std::print!("[{}] {}\n",i,dst2[i]);
-        }
-        let result = &dst2[..src.len()];
-        dump("Src",&src);
-        dump("dst",result);
-        compare(&src,result);
-    }
-}
