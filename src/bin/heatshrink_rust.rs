@@ -10,7 +10,7 @@ use std::fs::File;
 use std::io::{Write,Read};
 
 use heatshrink_byte::encoder;
-use heatshrink_byte::decoder as hsdecoder;
+
 
 use heatshrink_byte::Config as hsConfig;
 
@@ -24,8 +24,6 @@ struct Config {
     #[clap(short, long)]
     output_file: String,
     // decode
-  //  #[clap(short, long)]
-  //  decompress: bool,
 }
 
 const BUFFER_SIZE : usize = 200*1024;
@@ -33,15 +31,10 @@ const BUFFER_SIZE : usize = 200*1024;
 /**
  * 
  */
-fn main()  {
+fn main()  
+{
     let args=Config::parse();
     print!("Heatshrinking ");
-//    if args.decompress
-//    {
-//        print!("decompress ");
-//    }else {
-//        print!("compress ");
-//    }
     println!(" {} => {} ", args.input_file,args.output_file);
     
     let mut buffer_in : [u8;BUFFER_SIZE] = [0;BUFFER_SIZE];
@@ -59,23 +52,9 @@ fn main()  {
 
     // 2- Compress/Decompress
     let cfg = hsConfig::new(7, 4).unwrap();
-    let out : &[u8];
-    /*
-    if args.decompress{
-        // use byte per byte decode
-        let mut dec_size : usize = 0;
-        let mut decoder =  hsdecoder::HeatshrinkDecoder::new(&buffer_in[..input_size], &cfg);
-        
-        for _i in 0..input_size
-        {
-            buffer_out[dec_size] = decoder.next();
-            dec_size+=1;
-        }
-        out =&buffer_out[..dec_size];
-    }else {*/
-        out = encoder::encode(&buffer_in[..input_size], &mut buffer_out, &cfg).unwrap();
-    //}
-
+    let out : &[u8];  
+    
+    out = encoder::encode(&buffer_in[..input_size], &mut buffer_out, &cfg).unwrap();    
     // 3- Write
 
     let mut ofile: File =  match  File::create(args.output_file.clone())
@@ -89,8 +68,6 @@ fn main()  {
     drop(ofile); // make sure it's closed
 
     println!(" {} -> {}",input_size,output_size);
-
-    println!("-Done-") 
-    
+    println!("-Done-")    
 }
 //--eof--
